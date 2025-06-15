@@ -2,10 +2,12 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: regcred
+  namespace: project
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOiB7CgkJCSJhdXRoIjogImVHRnlZWFpwYm1RNk1UazVOVjlLZFd4NSIKCQl9Cgl9Cn0=
 ---
+# Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,11 +28,13 @@ spec:
         app: frontend
         tier: web
     spec:
+      imagePullSecrets:
+        - name: regcred
       containers:
         - name: frontend
-          image: xaravind/alm:jsocde-2.0
+          image: xaravind/jscode:v2
           ports:
-            - containerPort: 8080
+            - containerPort: 80
           resources:
             requests:
               memory: "64Mi"
@@ -41,16 +45,17 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 80
             initialDelaySeconds: 15
             periodSeconds: 20
 ---
+# Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -64,4 +69,4 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: 80

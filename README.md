@@ -164,5 +164,375 @@ In this stage we installed required packages, clone the code, created a docker i
 
 Fourth stage.
 
-1. Go to you Aws console, create a IAM role with adminstartion access and attach the role to ec2-instance
+1. Go to you Aws console, search for IAM
+
+2. click on role, create role
+
+3. select trusted entity type Aws Service and use case ec2, scroll down and click on next.
+
+4. select administator access as it will have access to all ec2-services that required to create a EKS cluster. scroll down and click on next.
+
+5. give role name and scroll down and click on create role.
+
+6. go to ec2 - instances and select our instance , click on actions , go to securiy, modify IAM role. 
+
+7. select newly created IAM role and click on update role.
+Now with our EC2-Instance we can control all aws service with aws cli.
+
+8. Aws cli is already as  we selected aws linux, in other os you have to install aws cli.
+
+9. check aws access.
+
+```bash
+[ec2-user@ip-172-31-86-127 ~]$ aws s3 mb s3://test-k8s.js
+make_bucket: test-k8s.js
+[ec2-user@ip-172-31-86-127 ~]$ aws s3 ls
+2025-06-15 06:52:01 test-k8s.js
+```
+
+10. create a eks.yml in local and push to github.
+
+```bash
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: expense
+  region: us-east-1
+
+managedNodeGroups:
+- name: expense
+  instanceType: m5.large
+  desiredCapacity: 3
+  spot: true
+```
+we have taken spot instances as we'll have get 90 % discount. but it not recommended as Aws will remove the ec2 instances with very short notice. but for our test purpose it is fine.
+
+11. pull the changes in ec2-instance
+
+```bash
+[root@ip-172-31-86-127 ~]# cd pvt-repo/
+[root@ip-172-31-86-127 pvt-repo]# ls
+README.md  js_code
+[root@ip-172-31-86-127 pvt-repo]# git pull -a
+[root@ip-172-31-86-127 pvt-repo]# ls
+README.md  eks.yml  js_code
+```
+
+12. eks installation.
+
+go to https://eksctl.io/installation/ and follow steps the steps.
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# ls
+README.md  eks.yml  js_code
+[root@ip-172-31-86-127 pvt-repo]# # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
+ARCH=amd64
+PLATFORM=$(uname -s)_$ARCH
+
+curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
+
+# (Optional) Verify checksum
+curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_checksums.txt" | grep $PLATFORM | sha256sum --check
+
+tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
+
+sudo mv /tmp/eksctl /usr/local/bin
+eksctl_Linux_amd64.tar.gz: OK
+rm: remove regular file 'eksctl_Linux_amd64.tar.gz'? y
+
+[root@ip-172-31-86-127 pvt-repo]# eksctl version
+0.210.0
+
+```
+
+13. create a eks cluster with config file, it will take time create all required aws-service to up the cluster,like 
+nodes, vpcs, sg,asg..et.., 
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# eksctl create cluster --config-file=eks.yml
+2025-06-15 07:05:09 [ℹ]  eksctl version 0.210.0
+2025-06-15 07:05:09 [ℹ]  using region us-east-1
+2025-06-15 07:05:09 [ℹ]  setting availability zones to [us-east-1b us-east-1a]
+2025-06-15 07:05:09 [ℹ]  subnets for us-east-1b - public:192.168.0.0/19 private:192.168.64.0/19
+2025-06-15 07:05:09 [ℹ]  subnets for us-east-1a - public:192.168.32.0/19 private:192.168.96.0/19
+2025-06-15 07:05:09 [ℹ]  nodegroup "expense" will use "" [AmazonLinux2023/1.32]
+2025-06-15 07:05:09 [ℹ]  using Kubernetes version 1.32
+2025-06-15 07:18:00 [✔]  EKS cluster "expense" in "us-east-1" region is ready
+
+```
+
+
+14. install kubectl to interact  with cluster.
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.33.0/2025-05-01/bin/linux/amd64/kubectl
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 57.3M  100 57.3M    0     0  21.2M      0  0:00:02  0:00:02 --:--:-- 21.2M
+[root@ip-172-31-86-127 pvt-repo]# chmod +x ./kubectl
+[root@ip-172-31-86-127 pvt-repo]# mv ./kubectl /usr/local/bin
+[root@ip-172-31-86-127 pvt-repo]# kubectl version --client
+Client Version: v1.33.0-eks-802817d
+Kustomize Version: v5.6.0
+```
+
+15. check the kubectl commands
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]#  kubectl api-resources | wc -l
+66
+[root@ip-172-31-86-127 pvt-repo]# kubectl get nodes
+NAME                             STATUS   ROLES    AGE    VERSION
+ip-192-168-27-169.ec2.internal   Ready    <none>   9m7s   v1.32.3-eks-473151a
+ip-192-168-55-115.ec2.internal   Ready    <none>   9m8s   v1.32.3-eks-473151a
+ip-192-168-63-135.ec2.internal   Ready    <none>   9m7s   v1.32.3-eks-473151a
+```
+
+16. encrypt the file below command to use it in k8s-secret and to pull the pvt images in k8s.
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# cat ~/.docker/config.json | base64 -w 0
+ewoJImF1dGhzIjxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxCn0=
+```
+
+17. create a mainfest file in local push the code and pull the code in ec2-intance
+
+```bash
+apiVersion: v1
+kind: Secret
+metadata:
+  name: regcred
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOiB7CgkJCSJhdXRoIjogImVHRnlZWFpwYm1RNk1UazVOVjlLZFd4NSIKCQl9Cgl9Cn0=
+---
+[root@ip-172-31-86-127 pvt-repo]# cat manifest.yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: regcred
+  namespace: project
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOiB7CgkJCSJhdXRoIjogImVHRnlZWFpwYm1RNk1UazVOVjlLZFd4NSIKCQl9Cgl9Cn0=
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: project
+  labels:
+    app: frontend
+    environment: project
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+      tier: web
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: web
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: frontend
+          image: xaravind/jscode:v2
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: project
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+    tier: web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+```
+
+
+
+18. create namespace and apply the manifest file.
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# kubectl create namespace project
+namespace/project created
+[root@ip-172-31-86-127 pvt-repo]# kubectl apply -f manifest.yml
+secret/regcred unchanged
+deployment.apps/frontend created
+service/frontend created
+```
+
+19. check the pods and service, it will create a load balancer service and open a random nodeport 30000–32767
+
+```bash
+
+[root@ip-172-31-86-127 pvt-repo]# kubectl get pods -n project
+NAME                        READY   STATUS             RESTARTS      AGE
+frontend-644df5c8b4-97gbj   0/1     Running            1 (32s ago)   92s
+frontend-6467b94fb8-hghzx   0/1     Running            0             11s
+frontend-6467b94fb8-t95fs   1/1     Running            0             25s
+frontend-6d78b8b5b6-xw8hl   0/1     CrashLoopBackOff   5 (21s ago)   6m22s
+[root@ip-172-31-86-127 pvt-repo]# kubectl describe pod frontend-6467b94fb8-hghzx -n project
+Name:             frontend-6467b94fb8-hghzx
+
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  28s   default-scheduler  Successfully assigned project/frontend-6467b94fb8-hghzx to ip-192-168-63-135.ec2.internal
+  Normal  Pulled     27s   kubelet            Container image "xaravind/jscode:v1" already present on machine
+  Normal  Created    27s   kubelet            Created container: frontend
+  Normal  Started    27s   kubelet            Started container frontend
+[root@ip-172-31-86-127 pvt-repo]# kubectl get svc frontend -n project
+NAME       TYPE           CLUSTER-IP     EXTERNAL-IP                                                              PORT(S)        AGE
+frontend   LoadBalancer   10.100.15.41   ab39bfabc67f9405f8e6c5b308273a51-706994256.us-east-1.elb.amazonaws.com   80:31689/TCP   7m3s
+```
+
+20. we need to add security group  30000–32767 to the node to access the application, other wise the target groups not become healthy.
+
+21. select any node intance , go to security, click on sg and edit inbound rules add port.
+
+22. access the application
+
+```bash
+curl http://<EXTERNAL-IP>/
+curl http://ab39bfabc67f9405f8e6c5b308273a51-706994256.us-east-1.elb.amazonaws.com/
+```
+
+23. update mainfest file with v2 image - xaravind/jscode:v2
+
+
+24. repply the changes
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# vi manifest.yml
+[root@ip-172-31-86-127 pvt-repo]# kubectl get pods -o wide -n project
+NAME                        READY   STATUS    RESTARTS   AGE     IP               NODE                             NOMINATED NODE   READINESS GATES
+frontend-6467b94fb8-hghzx   1/1     Running   0          7m12s   192.168.62.210   ip-192-168-63-135.ec2.internal   <none>           <none>
+frontend-6467b94fb8-hs94j   1/1     Running   0          6m59s   192.168.43.93    ip-192-168-55-115.ec2.internal   <none>           <none>
+frontend-6467b94fb8-t95fs   1/1     Running   0          7m26s   192.168.29.173   ip-192-168-27-169.ec2.internal   <none>           <none>
+[root@ip-172-31-86-127 pvt-repo]# kubectl apply -f manifest.yml
+secret/regcred unchanged
+deployment.apps/frontend configured
+service/frontend unchanged
+[root@ip-172-31-86-127 pvt-repo]# kubectl get pods -o wide -n project
+NAME                        READY   STATUS    RESTARTS   AGE     IP               NODE                             NOMINATED NODE   READINESS GATES
+frontend-6467b94fb8-hghzx   1/1     Running   0          7m55s   192.168.62.210   ip-192-168-63-135.ec2.internal   <none>           <none>
+frontend-6467b94fb8-hs94j   1/1     Running   0          7m42s   192.168.43.93    ip-192-168-55-115.ec2.internal   <none>           <none>
+frontend-6467b94fb8-t95fs   1/1     Running   0          8m9s    192.168.29.173   ip-192-168-27-169.ec2.internal   <none>           <none>
+frontend-f8f8b89df-zn2gn    0/1     Running   0          4s      192.168.2.38     ip-192-168-27-169.ec2.internal   <none>           <none>
+[root@ip-172-31-86-127 pvt-repo]# kubectl get pods -o wide -n project
+NAME                        READY   STATUS    RESTARTS   AGE     IP               NODE                             NOMINATED NODE   READINESS GATES
+frontend-6467b94fb8-hghzx   1/1     Running   0          8m3s    192.168.62.210   ip-192-168-63-135.ec2.internal   <none>           <none>
+frontend-6467b94fb8-hs94j   1/1     Running   0          7m50s   192.168.43.93    ip-192-168-55-115.ec2.internal   <none>           <none>
+frontend-6467b94fb8-t95fs   1/1     Running   0          8m17s   192.168.29.173   ip-192-168-27-169.ec2.internal   <none>           <none>
+frontend-f8f8b89df-zn2gn    0/1     Running   0          12s     192.168.2.38     ip-192-168-27-169.ec2.internal   <none>           <none>
+[root@ip-172-31-86-127 pvt-repo]# kubectl get pods -o wide -n project
+NAME                        READY   STATUS    RESTARTS   AGE     IP               NODE                             NOMINATED NODE   READINESS GATES
+frontend-6467b94fb8-hghzx   1/1     Running   0          8m10s   192.168.62.210   ip-192-168-63-135.ec2.internal   <none>           <none>
+frontend-6467b94fb8-hs94j   1/1     Running   0          7m57s   192.168.43.93    ip-192-168-55-115.ec2.internal   <none>           <none>
+frontend-f8f8b89df-ggncq    0/1     Running   0          5s      192.168.47.194   ip-192-168-63-135.ec2.internal   <none>           <none>
+frontend-f8f8b89df-zn2gn    1/1     Running   0          19s     192.168.2.38     ip-192-168-27-169.ec2.internal   <none>           <none>
+[root@ip-172-31-86-127 pvt-repo]# kubectl get pods -o wide -n project
+NAME                       READY   STATUS    RESTARTS   AGE   IP               NODE                             NOMINATED NODE   READINESS GATES
+frontend-f8f8b89df-ggncq   1/1     Running   0          61s   192.168.47.194   ip-192-168-63-135.ec2.internal   <none>           <none>
+frontend-f8f8b89df-xmjqn   1/1     Running   0          49s   192.168.39.242   ip-192-168-55-115.ec2.internal   <none>           <none>
+frontend-f8f8b89df-zn2gn   1/1     Running   0          75s   192.168.2.38     ip-192-168-27-169.ec2.internal   <none>           <none>
+
+```
+
+you can observe it clearly it will create a new pod with updated version and removing older pods one by one woth out having any downtime , it is called rolling update.
+
+
+```bash
+[root@ip-172-31-86-127 pvt-repo]# kubectl describe svc frontend -n project
+Name:                     frontend
+Namespace:                project
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=frontend,tier=web
+Type:                     LoadBalancer
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.100.15.41
+IPs:                      10.100.15.41
+LoadBalancer Ingress:     ab39bfabc67f9405f8e6c5b308273a51-706994256.us-east-1.elb.amazonaws.com
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  31689/TCP
+Endpoints:                192.168.2.38:80,192.168.47.194:80,192.168.39.242:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Internal Traffic Policy:  Cluster
+Events:
+  Type    Reason                Age                From                Message
+  ----    ------                ----               ----                -------
+  Normal  EnsuringLoadBalancer  12m (x2 over 17m)  service-controller  Ensuring load balancer
+  Normal  EnsuredLoadBalancer   12m (x2 over 17m)  service-controller  Ensured load balancer
+```
+
+25 . once your done, clean off the project
+
+```bash
+ eksctl delete cluster --config-file=eks.yml
+ [root@ip-172-31-86-127 pvt-repo]# eksctl delete cluster --config-file=eks.yml
+2025-06-15 08:25:07 [ℹ]  deleting EKS cluster "expense"
+2025-06-15 08:25:07 [ℹ]  will drain 0 unmanaged nodegroup(s) in cluster "expense"
+2025-06-15 08:25:07 [ℹ]  starting parallel draining, max in-flight of 1
+2025-06-15 08:25:07 [ℹ]  deleted 0 Fargate profile(s)
+2025-06-15 08:25:08 [✔]  kubeconfig has been updated
+2025-06-15 08:25:08 [ℹ]  cleaning up AWS load balancers created by Kubernetes objects of Kind Service or Ingress
+2025-06-15 08:25:33 [ℹ]
+2 sequential tasks: { delete nodegroup "expense", delete cluster control plane "expense" [async]
+}
+2025-06-15 08:25:33 [ℹ]  will delete stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:25:33 [ℹ]  waiting for stack "eksctl-expense-nodegroup-expense" to get deleted
+2025-06-15 08:25:33 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:26:03 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:26:48 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:27:40 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:28:30 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:29:31 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:30:55 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:32:25 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:34:07 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:35:46 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
+2025-06-15 08:35:46 [ℹ]  will delete stack "eksctl-expense-cluster"
+2025-06-15 08:35:46 [✔]  all cluster resources were deleted
+
+```
 
