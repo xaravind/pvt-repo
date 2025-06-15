@@ -197,11 +197,11 @@ apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 
 metadata:
-  name: expense
+  name: project
   region: us-east-1
 
 managedNodeGroups:
-- name: expense
+- name: project
   instanceType: m5.large
   desiredCapacity: 3
   spot: true
@@ -256,9 +256,9 @@ nodes, vpcs, sg,asg..et..,
 2025-06-15 07:05:09 [ℹ]  setting availability zones to [us-east-1b us-east-1a]
 2025-06-15 07:05:09 [ℹ]  subnets for us-east-1b - public:192.168.0.0/19 private:192.168.64.0/19
 2025-06-15 07:05:09 [ℹ]  subnets for us-east-1a - public:192.168.32.0/19 private:192.168.96.0/19
-2025-06-15 07:05:09 [ℹ]  nodegroup "expense" will use "" [AmazonLinux2023/1.32]
+2025-06-15 07:05:09 [ℹ]  nodegroup "project" will use "" [AmazonLinux2023/1.32]
 2025-06-15 07:05:09 [ℹ]  using Kubernetes version 1.32
-2025-06-15 07:18:00 [✔]  EKS cluster "expense" in "us-east-1" region is ready
+2025-06-15 07:18:00 [✔]  EKS cluster "project" in "us-east-1" region is ready
 
 ```
 
@@ -510,28 +510,28 @@ Events:
 ```bash
  eksctl delete cluster --config-file=eks.yml
  [root@ip-172-31-86-127 pvt-repo]# eksctl delete cluster --config-file=eks.yml
-2025-06-15 08:25:07 [ℹ]  deleting EKS cluster "expense"
-2025-06-15 08:25:07 [ℹ]  will drain 0 unmanaged nodegroup(s) in cluster "expense"
+2025-06-15 08:25:07 [ℹ]  deleting EKS cluster "project"
+2025-06-15 08:25:07 [ℹ]  will drain 0 unmanaged nodegroup(s) in cluster "project"
 2025-06-15 08:25:07 [ℹ]  starting parallel draining, max in-flight of 1
 2025-06-15 08:25:07 [ℹ]  deleted 0 Fargate profile(s)
 2025-06-15 08:25:08 [✔]  kubeconfig has been updated
 2025-06-15 08:25:08 [ℹ]  cleaning up AWS load balancers created by Kubernetes objects of Kind Service or Ingress
 2025-06-15 08:25:33 [ℹ]
-2 sequential tasks: { delete nodegroup "expense", delete cluster control plane "expense" [async]
+2 sequential tasks: { delete nodegroup "project", delete cluster control plane "project" [async]
 }
-2025-06-15 08:25:33 [ℹ]  will delete stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:25:33 [ℹ]  waiting for stack "eksctl-expense-nodegroup-expense" to get deleted
-2025-06-15 08:25:33 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:26:03 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:26:48 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:27:40 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:28:30 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:29:31 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:30:55 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:32:25 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:34:07 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:35:46 [ℹ]  waiting for CloudFormation stack "eksctl-expense-nodegroup-expense"
-2025-06-15 08:35:46 [ℹ]  will delete stack "eksctl-expense-cluster"
+2025-06-15 08:25:33 [ℹ]  will delete stack "eksctl-project-nodegroup-project"
+2025-06-15 08:25:33 [ℹ]  waiting for stack "eksctl-project-nodegroup-project" to get deleted
+2025-06-15 08:25:33 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:26:03 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:26:48 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:27:40 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:28:30 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:29:31 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:30:55 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:32:25 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:34:07 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:35:46 [ℹ]  waiting for CloudFormation stack "eksctl-project-nodegroup-project"
+2025-06-15 08:35:46 [ℹ]  will delete stack "eksctl-project-cluster"
 2025-06-15 08:35:46 [✔]  all cluster resources were deleted
 
 ```
