@@ -536,3 +536,4 @@ Events:
 
 ```
 
+In this stage, we crerated a IAM role with admininstrato access , attched roled to instsnce, instllaed eksctl & kubectl pakaches, created eks cluster, created a namsepace, applied manifest file, access the d application and modified file with image v2 and applied it again and finally did cleanup.
